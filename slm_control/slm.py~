@@ -32,7 +32,7 @@ class Canvas:
             add_thing(self, superpixel.canvas, superpixel.x, superpixel.y)
         
     def show(self):
-        fig, ax = plt.subplots()
+        fig, ax = plt.subplots(figsize=(15, 10))
         ax.imshow(self.canvas, cmap='gray')
     
     def save(self, filepath):

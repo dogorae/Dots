@@ -25,10 +25,12 @@ def get_rot_and_trans_matrix(src, dst):
     r_change = r_after / r_before
     angle = np.angle(r_change)
     scale = np.abs(r_change)
-    x_trans = pt1x_after - pt1x_before
-    y_trans = pt1y_after - pt1y_before
-    M = [[scale*np.cos(angle), scale*np.sin(angle), x_trans],
-         [-scale*np.sin(angle), scale*np.cos(angle), y_trans]]
+    x_trans = pt1x_after \
+        - (scale*np.cos(angle)*pt1x_before - scale*np.sin(angle)*pt1y_before)
+    y_trans = pt1y_after \
+        - (scale*np.sin(angle)*pt1x_before + scale*np.cos(angle)*pt1y_before)
+    M = [[scale*np.cos(angle), -scale*np.sin(angle), x_trans],
+         [scale*np.sin(angle), scale*np.cos(angle), y_trans]]
     return np.array(M)
 
 def transform_dots(dots, M):
@@ -66,15 +68,17 @@ new_dots = transform_dots(dot_cdts, rot_matrix)
 canvas = slm.Canvas(1920, 1200)  # represents SLM screen
 
 for dot in new_dots:
-    superpixel = slm.Superpixel(pos=dot)
+    superpixel = slm.Superpixel(pos=dot, width=15, height=15)
     canvas.add_superpixel(superpixel)
 
 filepath = r"C:\santec\SLM-200\Files\grating\test.csv"
 canvas.save(filepath)
 slm.display(filepath)
 
-plt.imshow(marked_image)
-plt.show()
-
-canvas.show()
+fig, (ax1, ax2) = plt.subplots(2, figsize=(5,10))
+ax1.imshow(marked_image)
+ax1.set_title("Camera image")
+ax2.imshow(canvas.canvas, cmap='gray')
+ax2.set_title("SLM screen")
+fig.tight_layout()
 plt.show()
