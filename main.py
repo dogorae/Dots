@@ -4,8 +4,10 @@ import matplotlib.pyplot as plt
 import cv2 as cv
 import os
 
-SEED_POS = [[92, 214], [92, 8]]
-SLM_POS = [[1225, 585], [700, 550]]
+# Coordinates in x,y, not row, column
+SEED_POS = [[96, 212], [96, 10]]   # pixel coordinates of seed laser on camera (two orders)
+SLM_POS = [[635, 615], [1290, 615]] # corresponding SLM pixel numbers
+IMG_PATH = 'resources\dots2.png'
 
 def get_rot_and_trans_matrix(src, dst):
     """
@@ -29,13 +31,18 @@ def get_rot_and_trans_matrix(src, dst):
          [-scale*np.sin(angle), scale*np.cos(angle), y_trans]]
     return np.array(M)
 
+def transform_dots(dots, M):
+    transformed_dots = list(map(lambda x: np.matmul(M, np.append(x, 1.0)).astype(np.uint32),
+                                dots)) # Affine transformation
+    return transformed_dots
+
 def circle_finder(img):
     marked_image = img
     gray = cv.cvtColor(img, cv.COLOR_BGR2GRAY)
     gray_blurred = cv.blur(gray, (4, 4))
     detected_circles = cv.HoughCircles(gray_blurred, 
-                                       cv.HOUGH_GRADIENT, 1, 12, param1 = 5,
-                                       param2 = 5, minRadius = 0, maxRadius = 5)
+                                       cv.HOUGH_GRADIENT, 1, 13, param1=20,
+                                       param2=3, minRadius=0, maxRadius=5)
     circle_cdts = []
   
     # Draw circles that are detected.
@@ -51,16 +58,23 @@ def circle_finder(img):
     return circle_cdts, marked_image
 
 dir = os.path.dirname(__file__)
-filename = os.path.join('resources\dots.png')
+filename = os.path.join(IMG_PATH)
 img = cv.imread(filename)
 dot_cdts, marked_image = circle_finder(img)
 rot_matrix = get_rot_and_trans_matrix(SEED_POS, SLM_POS)
-new_dots = list(map(lambda x: np.matmul(rot_matrix, np.append(x, 1.0)), dot_cdts))
+new_dots = transform_dots(dot_cdts, rot_matrix)
+canvas = slm.Canvas(1920, 1200)  # represents SLM screen
 
-##  TO DO ##
-# - make new_dots to hold integers
-# - interface with SLM superpixel maker
-# - and then try it in real life!!
+for dot in new_dots:
+    superpixel = slm.Superpixel(pos=dot)
+    canvas.add_superpixel(superpixel)
+
+filepath = r"C:\santec\SLM-200\Files\grating\test.csv"
+canvas.save(filepath)
+slm.display(filepath)
 
 plt.imshow(marked_image)
+plt.show()
+
+canvas.show()
 plt.show()
