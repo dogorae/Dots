@@ -5,9 +5,9 @@ import cv2 as cv
 import os
 
 # Coordinates in x,y, not row, column
-SEED_POS = [[96, 212], [96, 10]]   # pixel coordinates of seed laser on camera (two orders)
-SLM_POS = [[635, 615], [1290, 615]] # corresponding SLM pixel numbers
-IMG_PATH = 'resources\dots2.png'
+SEED_POS = [[2570,1350],[1288,926]] # pixel coordinates of seed laser on camera (two orders)
+SLM_POS = [[650,625], [1215,628]] # corresponding SLM pixel numbers
+IMG_PATH = r'resources\dots4.png'
 
 def get_rot_and_trans_matrix(src, dst):
     """
@@ -34,17 +34,19 @@ def get_rot_and_trans_matrix(src, dst):
     return np.array(M)
 
 def transform_dots(dots, M):
-    transformed_dots = list(map(lambda x: np.matmul(M, np.append(x, 1.0)).astype(np.uint32),
-                                dots)) # Affine transformation
+    transformed_dots = list(map(lambda x: np.matmul(M, np.append(x, 1.0)).astype(np.uint32), dots)) # Affine transformation
     return transformed_dots
 
 def circle_finder(img):
-    marked_image = img
+    marked_image = img.copy()
     gray = cv.cvtColor(img, cv.COLOR_BGR2GRAY)
-    gray_blurred = cv.blur(gray, (4, 4))
-    detected_circles = cv.HoughCircles(gray_blurred, 
-                                       cv.HOUGH_GRADIENT, 1, 13, param1=20,
-                                       param2=3, minRadius=0, maxRadius=5)
+    gray = logify(gray)
+    gray_blurred = cv.blur(gray, (20, 20))
+    detected_circles = cv.HoughCircles(gray_blurred,
+                                       cv.HOUGH_GRADIENT,
+                                       1, 80,
+                                       param1=30, param2=10,
+                                       minRadius=15, maxRadius=25)
     circle_cdts = []
   
     # Draw circles that are detected.
@@ -59,21 +61,34 @@ def circle_finder(img):
 
     return circle_cdts, marked_image
 
+def logify(img):
+    img_copy = img.copy()
+    img_copy[img_copy==255] = 254  # 255+1=0 in uint8, so replace 255 with 254
+    c = 255/np.log(1 + np.max(img_copy))
+    log_image = c*(np.log(img_copy+1))
+    log_image = np.array(log_image, dtype=np.uint8)
+    return log_image
+    
+
+def fits_on_screen(a):
+    return (a[0] > 0 and a[0] < 1900) and (a[1] > 0 and a[1] < 1150)
+
 dir = os.path.dirname(__file__)
 filename = os.path.join(IMG_PATH)
 img = cv.imread(filename)
 dot_cdts, marked_image = circle_finder(img)
 rot_matrix = get_rot_and_trans_matrix(SEED_POS, SLM_POS)
 new_dots = transform_dots(dot_cdts, rot_matrix)
+new_dots = list(filter(fits_on_screen, new_dots))
 canvas = slm.Canvas(1920, 1200)  # represents SLM screen
 
 for dot in new_dots:
     superpixel = slm.Superpixel(pos=dot, width=15, height=15)
     canvas.add_superpixel(superpixel)
 
-filepath = r"C:\santec\SLM-200\Files\grating\test.csv"
-canvas.save(filepath)
-slm.display(filepath)
+# filepath = r"C:\santec\SLM-200\Files\grating\test.csv"
+# canvas.save(filepath)
+# slm.display(filepath)
 
 fig, (ax1, ax2) = plt.subplots(2, figsize=(5,10))
 ax1.imshow(marked_image)
