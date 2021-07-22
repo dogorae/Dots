@@ -5,9 +5,11 @@ import cv2 as cv
 import os
 
 # Coordinates in x,y, not row, column
-SEED_POS = [[2570,1350],[1288,926]] # pixel coordinates of seed laser on camera (two orders)
-SLM_POS = [[650,625], [1215,628]] # corresponding SLM pixel numbers
+SEED_POS = [[2574,1354],[1296,930]] # pixel coordinates of seed laser on camera (two orders)
+SLM_POS = [[652,627], [1214,627]] # corresponding SLM pixel numbers
 IMG_PATH = r'resources\dots4.png'
+XOFFSET = 3  # x, y translation offsets for SLM pixel mapping
+YOFFSET = -1
 
 def get_rot_and_trans_matrix(src, dst):
     """
@@ -25,9 +27,9 @@ def get_rot_and_trans_matrix(src, dst):
     r_change = r_after / r_before
     angle = np.angle(r_change)
     scale = np.abs(r_change)
-    x_trans = pt1x_after \
+    x_trans = XOFFSET + pt1x_after \
         - (scale*np.cos(angle)*pt1x_before - scale*np.sin(angle)*pt1y_before)
-    y_trans = pt1y_after \
+    y_trans = YOFFSET + pt1y_after \
         - (scale*np.sin(angle)*pt1x_before + scale*np.cos(angle)*pt1y_before)
     M = [[scale*np.cos(angle), -scale*np.sin(angle), x_trans],
          [scale*np.sin(angle), scale*np.cos(angle), y_trans]]
@@ -86,11 +88,11 @@ for dot in new_dots:
     superpixel = slm.Superpixel(pos=dot, width=15, height=15)
     canvas.add_superpixel(superpixel)
 
-# filepath = r"C:\santec\SLM-200\Files\grating\test.csv"
-# canvas.save(filepath)
-# slm.display(filepath)
+filepath = r"C:\santec\SLM-200\Files\grating\test.csv"
+canvas.save(filepath)
+slm.display(filepath)
 
-fig, (ax1, ax2) = plt.subplots(2, figsize=(5,10))
+fig, (ax1, ax2) = plt.subplots(2, figsize=(7,10))
 ax1.imshow(marked_image)
 ax1.set_title("Camera image")
 ax2.imshow(canvas.canvas, cmap='gray')
